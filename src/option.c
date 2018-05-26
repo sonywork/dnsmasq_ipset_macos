@@ -579,6 +579,24 @@ static char *opt_string_alloc(char *cp)
 /* find next comma, split string with zero and eliminate spaces.
    return start of string following comma */
 
+static char *split_chr_len(char *s, char c,int l)
+{
+  char *comma, *p;
+
+  if (!s || !(comma = memchr(s, c,l)))
+    return NULL;
+  
+  p = comma;
+  *comma = ' ';
+  
+  for (; *comma == ' '; comma++);
+ 
+  for (; (p >= s) && *p == ' '; p--)
+    *p = 0;
+    
+  return comma;
+}
+
 static char *split_chr(char *s, char c)
 {
   char *comma, *p;
@@ -2515,8 +2533,13 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 	 struct ipsets ipsets_head;
 	 struct ipsets *ipsets = &ipsets_head;
 	 int size;
+	 int size4;
+	 int size6;
 	 char *end;
+	 char *sharp_pos;
 	 char **sets, **sets_pos;
+	 char **sets4, **sets4_pos;
+	 char **sets6, **sets6_pos;
 	 memset(ipsets, 0, sizeof(struct ipsets));
 	 unhide_metas(arg);
 	 if (arg && *arg == '/') 
@@ -2553,20 +2576,51 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 	     break;
 	   }
 	 size = 2;
-	 for (end = arg; *end; ++end) 
-	   if (*end == ',')
+	 size4 = 2;
+	 size6 = 2;
+	for (end = arg; *end; ++end) {
+	   if (*end == ','){
 	       ++size;
-     
+	   } else if (*end == '|'){
+	   	   --size;
+		   ++size4;
+		   ++size6;
+	   } 
+	}
+	if(size<1){
+		option = '?';
+		break;
+	}else if(size==1){
+		size = 2;
+	}
 	 sets = sets_pos = opt_malloc(sizeof(char *) * size);
-	 
+	 sets4 = sets4_pos = opt_malloc(sizeof(char *) * size4);
+	 sets6 = sets6_pos = opt_malloc(sizeof(char *) * size6);
 	 do {
 	   end = split(arg);
-	   *sets_pos++ = opt_string_alloc(arg);
+	   
+	   
+	   if(end!=NULL){
+	   	   sharp_pos = split_chr_len(arg,'|',(size_t)(end-arg));
+	   }else{
+	   		sharp_pos = split_chr(arg,'|');
+	   }
+	   if(sharp_pos!=NULL){
+		    *sets4_pos++ = opt_string_alloc(arg);
+	   		*sets6_pos++ = opt_string_alloc(sharp_pos);
+	   }else{
+	   	 *sets_pos++ = opt_string_alloc(arg);
+	   }
 	   arg = end;
 	 } while (end);
 	 *sets_pos = 0;
-	 for (ipsets = &ipsets_head; ipsets->next; ipsets = ipsets->next)
+	 *sets4_pos = 0;
+	 *sets6_pos = 0;
+	 for (ipsets = &ipsets_head; ipsets->next; ipsets = ipsets->next){
 	   ipsets->next->sets = sets;
+	   ipsets->next->sets4 = sets4;
+	   ipsets->next->sets6 = sets6;
+     }
 	 ipsets->next = daemon->ipsets;
 	 daemon->ipsets = ipsets_head.next;
 	 

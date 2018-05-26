@@ -584,7 +584,7 @@ static int find_soa(struct dns_header *header, size_t qlen, char *name, int *doc
    expired and cleaned out that way. 
    Return 1 if we reject an address because it look like part of dns-rebinding attack. */
 int extract_addresses(struct dns_header *header, size_t qlen, char *name, time_t now, 
-		      char **ipsets, int is_sign, int check_rebind, int no_cache_dnssec,
+		      char **ipsets,char **ipsets4,char **ipsets6, int is_sign, int check_rebind, int no_cache_dnssec,
 		      int secure, int *doctored)
 {
   unsigned char *p, *p1, *endrr, *namep;
@@ -595,6 +595,8 @@ int extract_addresses(struct dns_header *header, size_t qlen, char *name, time_t
   char **ipsets_cur;
 #else
   (void)ipsets; /* unused */
+  (void)ipsets4; /* unused */
+  (void)ipsets6; /* unused */
 #endif
 
   
@@ -830,15 +832,31 @@ int extract_addresses(struct dns_header *header, size_t qlen, char *name, time_t
 			}
 		      
 #ifdef HAVE_IPSET
-		      if (ipsets && (flags & (F_IPV4 | F_IPV6)))
+			if ((ipsets||ipsets4||ipsets6) && (flags & (F_IPV4 | F_IPV6)))
 			{
-			  ipsets_cur = ipsets;
-			  while (*ipsets_cur)
-			    {
-			      log_query((flags & (F_IPV4 | F_IPV6)) | F_IPSET, name, &addr, *ipsets_cur);
-			      add_to_ipset(*ipsets_cur++, &addr, flags, 0);
-			    }
+				ipsets_cur = ipsets;
+				while (*ipsets_cur)
+				{
+					log_query((flags & (F_IPV4 | F_IPV6)) | F_IPSET, name, &addr, *ipsets_cur);
+					add_to_ipset(*ipsets_cur++, &addr, flags, 0);
+				}
+				if(flags & F_IPV4){
+					ipsets_cur = ipsets4;
+					while (*ipsets_cur)
+					{
+						log_query((flags & F_IPV4) | F_IPSET, name, &addr, *ipsets_cur);
+						add_to_ipset(*ipsets_cur++, &addr, flags, 0);
+					}
+				}else if(flags & F_IPV6){
+					ipsets_cur = ipsets6;
+					while (*ipsets_cur)
+					{
+						log_query((flags & F_IPV6) | F_IPSET, name, &addr, *ipsets_cur);
+						add_to_ipset(*ipsets_cur++, &addr, flags, 0);
+					}
+				}
 			}
+			
 #endif
 		      
 		      newc = cache_insert(name, &addr, now, attl, flags | F_FORWARD | secflag);

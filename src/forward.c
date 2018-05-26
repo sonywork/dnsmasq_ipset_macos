@@ -562,6 +562,9 @@ static size_t process_reply(struct dns_header *header, time_t now, struct server
 {
   unsigned char *pheader, *sizep;
   char **sets = 0;
+  // add sets4 for ipv4,sets6 for ipv6
+  char **sets4 = 0;
+  char **sets6 = 0;
   int munged = 0, is_sign;
   size_t plen; 
   
@@ -572,22 +575,25 @@ static size_t process_reply(struct dns_header *header, time_t now, struct server
 #ifdef HAVE_IPSET
   if (daemon->ipsets && extract_request(header, n, daemon->namebuff, NULL))
     {
-      /* Similar algorithm to search_servers. */
-      struct ipsets *ipset_pos;
-      unsigned int namelen = strlen(daemon->namebuff);
-      unsigned int matchlen = 0;
-      for (ipset_pos = daemon->ipsets; ipset_pos; ipset_pos = ipset_pos->next) 
-	{
-	  unsigned int domainlen = strlen(ipset_pos->domain);
-	  char *matchstart = daemon->namebuff + namelen - domainlen;
-	  if (namelen >= domainlen && hostname_isequal(matchstart, ipset_pos->domain) &&
-	      (domainlen == 0 || namelen == domainlen || *(matchstart - 1) == '.' ) &&
-	      domainlen >= matchlen) 
-	    {
-	      matchlen = domainlen;
-	      sets = ipset_pos->sets;
-	    }
-	}
+        /* Similar algorithm to search_servers. */
+		struct ipsets *ipset_pos;
+		unsigned int namelen = strlen(daemon->namebuff);
+		unsigned int matchlen = 0;
+		for (ipset_pos = daemon->ipsets; ipset_pos; ipset_pos = ipset_pos->next) 
+		{
+		  unsigned int domainlen = strlen(ipset_pos->domain);
+		  char *matchstart = daemon->namebuff + namelen - domainlen;
+		  if (namelen >= domainlen && hostname_isequal(matchstart, ipset_pos->domain) &&
+		      (domainlen == 0 || namelen == domainlen || *(matchstart - 1) == '.' ) &&
+		      domainlen >= matchlen) 
+		    {
+		      matchlen = domainlen;
+		      sets = ipset_pos->sets;
+			  sets4 = ipset_pos->sets4;
+			  sets6 = ipset_pos->sets6;
+			  // break;
+		    }
+		}
     }
 #endif
   
@@ -679,7 +685,7 @@ static size_t process_reply(struct dns_header *header, time_t now, struct server
 	  cache_secure = 0;
 	}
       
-      if (extract_addresses(header, n, daemon->namebuff, now, sets, is_sign, check_rebind, no_cache, cache_secure, &doctored))
+      if (extract_addresses(header, n, daemon->namebuff, now, sets, sets4, sets6, is_sign, check_rebind, no_cache, cache_secure, &doctored))
 	{
 	  my_syslog(LOG_WARNING, _("possible DNS-rebind attack detected: %s"), daemon->namebuff);
 	  munged = 1;
@@ -711,7 +717,7 @@ static size_t process_reply(struct dns_header *header, time_t now, struct server
     }
 #endif
 
-  /* do this after extract_addresses. Ensure NODATA reply and remove
+  /* do this after gfwlist#gfwlist6. Ensure NODATA reply and remove
      nameserver info. */
   
   if (munged)

@@ -530,6 +530,8 @@ struct server {
 
 struct ipsets {
   char **sets;
+  char **sets4;
+  char **sets6;
   char *domain;
   struct ipsets *next;
 };
@@ -1147,7 +1149,7 @@ size_t setup_reply(struct dns_header *header, size_t  qlen,
 		   struct all_addr *addrp, unsigned int flags,
 		   unsigned long ttl);
 int extract_addresses(struct dns_header *header, size_t qlen, char *name,
-		      time_t now, char **ipsets, int is_sign, int check_rebind,
+		      time_t now, char **ipsets,char **ipsets4,char **ipsets6, int is_sign, int check_rebind,
 		      int no_cache_dnssec, int secure, int *doctored);
 size_t answer_request(struct dns_header *header, char *limit, size_t qlen,  
 		      struct in_addr local_addr, struct in_addr local_netmask, 

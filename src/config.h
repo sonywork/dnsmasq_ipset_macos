@@ -94,6 +94,9 @@ HAVE_DBUS
    support some methods to allow (re)configuration of the upstream DNS 
    servers via DBus.
 
+HAVE_UBUS
+   define this if you want to link against libubus
+
 HAVE_IDN
    define this if you want international domain name 2003 support.
    
@@ -117,6 +120,9 @@ HAVE_AUTH
 HAVE_DNSSEC
    include DNSSEC validator.
 
+HAVE_DUMPFILE
+   include code to dump packets to a libpcap-format file for debugging.
+
 HAVE_LOOP
    include functionality to probe for and remove DNS forwarding loops.
 
@@ -132,6 +138,7 @@ NO_DHCP6
 NO_SCRIPT
 NO_LARGEFILE
 NO_AUTH
+NO_DUMPFILE
 NO_INOTIFY
    these are available to explicitly disable compile time options which would 
    otherwise be enabled automatically (HAVE_IPV6, >2Gb file sizes) or 
@@ -164,6 +171,7 @@ RESOLVFILE
 #define HAVE_AUTH
 #define HAVE_IPSET 
 #define HAVE_LOOP
+#define HAVE_DUMPFILE
 
 /* Build options which require external libraries.
    
@@ -286,7 +294,6 @@ HAVE_SOCKADDR_SA_LEN
    Define before netinet6/in6.h is included. */
 #define __APPLE_USE_RFC_3542 
 #define PRIVATE
-// #define NO_IPSET
 
 #elif defined(__NetBSD__)
 #define HAVE_BSD_NETWORK
@@ -362,6 +369,10 @@ HAVE_SOCKADDR_SA_LEN
 
 #ifdef NO_LOOP
 #undef HAVE_LOOP
+#endif
+
+#ifdef NO_DUMPFILE
+#undef HAVE_DUMPFILE
 #endif
 
 #if defined (HAVE_LINUX_NETWORK) && !defined(NO_INOTIFY)
@@ -452,8 +463,11 @@ static char *compile_opts =
 #ifndef HAVE_INOTIFY
 "no-"
 #endif
-"inotify";
-
+"inotify "
+#ifndef HAVE_DUMPFILE
+"no-"
+#endif
+"dumpfile";
 
 #endif
 
